@@ -15,10 +15,10 @@ func main() {
 	log.SetPrefix("greetings: ")
 	log.SetFlags(0)
 
-	fmt.Println(quote.Go())
+  fmt.Println(quote.Go())
 
 	// Get a greeting message and print it.
-	message, err := greetings.Hello("")
+	message, err := greetings.Hello("Ariel")
 	if err != nil {
 		log.Fatal(err)
 	}
