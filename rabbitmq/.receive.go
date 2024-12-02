@@ -12,4 +12,6 @@ func failOnError(err error, msg string) {
   }
 }
 
+func main() {
 
+}
