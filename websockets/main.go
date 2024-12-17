@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/gorilla/websocket"
 )
+
+type Task struct {
+	Message string `json:"message"`
+}
 
 // We'll need to define an Upgrader
 // this will require a Read and Write buffer size
@@ -68,14 +73,33 @@ func setupRoutes() {
 	http.HandleFunc("/ws", serveWs)
 }
 
+func postAlert(w http.ResponseWriter, r *http.Request) {
+	r.Header.Add("Content-Type", "application/json")
+	var task Task
+	err := json.NewDecoder(r.Body).Decode(&task)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	//lastID++
+	//tasks[lastID] = task
+	//w.WriteHeader(http.StatusCreated)
+	//json.NewEncoder(w).Encode(task)
+
+}
+
 func main() {
 	fmt.Printf("Chatty Batty v0.1")
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+		w.Write([]byte("Welcome to the home page!"))
 	})
+
+	r.Post("/alert", postAlert)
 
 	http.ListenAndServe(":8080", r)
 }
