@@ -95,11 +95,13 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to the home page!"))
+	r.Group(func(r chi.Router) {
+		r.Post("/alert", postAlert)
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Welcome to the home page!"))
+		})
 	})
 
-	r.Post("/alert", postAlert)
-
 	http.ListenAndServe(":8080", r)
+
 }
