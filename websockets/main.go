@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"websockets/application"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -91,6 +92,8 @@ func postAlert(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	fmt.Printf("Chatty Batty v0.1")
+
+	app := application.NewStore()
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
