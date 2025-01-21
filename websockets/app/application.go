@@ -82,6 +82,8 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	go app.WriteMessage()
 
+	// todo: implement process to extract current user info from the browser.
+	app.Data.Set(ws)
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
 	for {
