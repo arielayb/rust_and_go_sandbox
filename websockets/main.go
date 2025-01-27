@@ -124,7 +124,7 @@ type Task struct {
 // }
 
 func main() {
-	fmt.Printf("Chatty Batty v0.1")
+	fmt.Println("Chatty Batty v0.1")
 	// store := app.SafeStore
 	app := &app.App{
 		Data: *app.NewStore(),
@@ -140,8 +140,9 @@ func main() {
 		})
 	})
 
+	go app.BroadcastMsg()
+
 	// start the websocket
 	http.HandleFunc("/ws", app.ServeWs)
-
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(":8080", nil)
 }

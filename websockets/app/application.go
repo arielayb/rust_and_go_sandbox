@@ -10,8 +10,7 @@ import (
 )
 
 type App struct {
-	Data         SafeStore
-	BroadcastMsg chan string
+	Data SafeStore
 }
 
 // We'll need to define an Upgrader
@@ -38,34 +37,35 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	}
 	//lastID++
 	//tasks[lastID] = task
+	app.Data.BroadcastMsg <- task
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(task)
 
 }
 
-func (app *App) WriteMessage() {
+func (app *App) BroadcastMsg() {
 	for {
 		// Grab the next message from the broadcast channel
-		message := <-app.BroadcastMsg
+		select {
+		case message := <-app.Data.BroadcastMsg:
+			fmt.Println("we got a message: ", message)
 
-		// Send the message to all connected clients
-		tempMap := app.Data.GetAll()
-		js, err := json.Marshal(message)
-		if err != nil {
-			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", err)
-		}
+			js, err := json.Marshal(message)
+			if err != nil {
+				log.Fatal("Cannot pack the message as a JSON message!", "ERROR", err)
+			}
 
-		for key, clients := range tempMap {
-			for _, client := range clients {
-
+			// Send the message to all connected clients
+			tempMap := app.Data.GetAll()
+			for key, client := range tempMap {
 				err := client.WriteMessage(websocket.TextMessage, js)
 				if err != nil {
-					client.Close()
-					app.Data.Remove(key)
+					app.Data.Remove(key, client)
 				}
+
 			}
+			fmt.Println("the message to write: ", string(message))
 		}
-		fmt.Println("the message to write: ", string(message))
 	}
 }
 
@@ -79,22 +79,24 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
+	defer ws.Close()
 
-	go app.WriteMessage()
-
+	var userData UserInfo
 	// todo: implement process to extract current user info from the browser.
-	app.Data.Set(ws)
+	app.Data.Set(&userData, ws)
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
 	for {
 		// read in a message
-		_, p, err := ws.ReadMessage()
+		_, msg, err := ws.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
 		// print out that message for clarity
-		fmt.Println(string(p))
-
+		fmt.Println("what we got: ", string(msg))
+		userData = UserInfo{UserCn: string(msg)}
+		app.Data.BroadcastMsg <- string(msg)
 	}
+
 }
