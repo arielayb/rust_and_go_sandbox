@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -47,4 +48,14 @@ func (ss *SafeStore) GetAll() map[*UserInfo]*websocket.Conn {
 	ss.mu.Unlock()
 
 	return tempMap
+}
+
+func (ss *SafeStore) PrintAll() {
+	ss.mu.Lock()
+	for key, _ := range ss.Clients {
+		fmt.Println("the key: ", key)
+	}
+	ss.mu.Unlock()
+
+	fmt.Println("the number of sessions: ", len(ss.Clients))
 }

@@ -96,6 +96,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		// print out that message for clarity
 		fmt.Println("what we got: ", string(msg))
 		userData = UserInfo{UserCn: string(msg)}
+		app.Data.PrintAll()
 		app.Data.BroadcastMsg <- string(msg)
 	}
 
