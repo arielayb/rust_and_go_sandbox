@@ -7,6 +7,7 @@ import "./App.css";
 import { connect, sendMsg } from "./index"
 import Header from './components/header/Header';
 import ChatHistory from './components/chatHistory/ChatHistory';
+// import TextTable from './components/textTable/TextTable';
 
 class App extends Component {
   constructor(props) {
@@ -22,6 +23,9 @@ class App extends Component {
       this.setState(prevState => ({
         chatHistory: [...this.state.chatHistory, msg]
       }))
+      // this.setState(prevState => ({
+      //   textTable: [...this.state.textTable, msg]
+      // }))
       console.log(this.state);
     });
   }
@@ -36,6 +40,7 @@ render() {
     <div className="App">
       <Header />
       <ChatHistory chatHistory={this.state.chatHistory} />
+      {/* <TextTable textTable={this.state.textTable}/> */}
       <button onClick={this.send}>Hit</button>
     </div>
   );
