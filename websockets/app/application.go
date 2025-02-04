@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -33,7 +32,7 @@ const (
 	writeWait = 10 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 60 * time.Second
+	pongWait = 6 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
@@ -60,9 +59,10 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) BroadcastMsg() {
-	ticker := time.NewTicker(pingPeriod)
-	message := ""
 	for {
+		message := ""
+		ticker := time.NewTicker(pingPeriod)
+
 		tempMap := app.Data.GetAll()
 		// Grab the next message from the broadcast channel
 		for key, client := range tempMap {
@@ -78,7 +78,7 @@ func (app *App) BroadcastMsg() {
 				// Send the message to all connected clients
 				// tempMap := app.Data.GetAll()
 				// for key, client := range tempMap {
-				client.SetWriteDeadline(time.Now().Add(writeWait))
+				// client.SetWriteDeadline(time.Now().Add(writeWait))
 				err := client.WriteMessage(websocket.TextMessage, js)
 				if err != nil {
 					app.Data.Remove(key, client)
@@ -88,9 +88,9 @@ func (app *App) BroadcastMsg() {
 				fmt.Println("the message to write: ", string(message))
 
 			case <-ticker.C:
-				msg := "keepalive"
-				client.SetWriteDeadline(time.Now().Add(writeWait))
-				if err := client.WriteMessage(websocket.PingMessage, []byte(msg)); err != nil {
+				msg := ""
+				// client.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := client.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
 					return
 				}
 			}
@@ -110,15 +110,15 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	stdoutDone := make(chan struct{})
-	go app.Ping(ws, stdoutDone)
+	// stdoutDone := make(chan struct{})
+	// go app.Ping(ws, stdoutDone)
 
 	var userData UserInfo
 	// todo: implement process to extract current user info from the browser.
-	ws.SetReadLimit(maxMessageSize)
-	ws.SetReadDeadline(time.Now().Add(pongWait))
-	ws.SetPongHandler(func(string) error { ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-	app.Data.Set(&userData, ws)
+	// ws.SetReadLimit(maxMessageSize)
+	// ws.SetReadDeadline(time.Now().Add(pongWait))
+	// ws.SetPongHandler(func(string) error { ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	// app.Data.Set(&userData, ws)
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
 	for {
@@ -128,29 +128,17 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 				log.Printf("error: %v", err)
 			}
 			break
+
+		} else {
+			fmt.Println("what we got: ", string(message))
+			userData = UserInfo{UserCn: string(message)}
+			app.Data.Set(&userData, ws)
 		}
-		message = bytes.TrimSpace(bytes.Replace(message, []byte{'\n'}, []byte{' '}, -1))
-		app.Data.BroadcastMsg <- string(message)
+		// message = bytes.TrimSpace(bytes.Replace(message, []byte{'\n'}, []byte{' '}, -1))
+		// app.Data.BroadcastMsg <- string(message)
 
 		// print out that message for clarity
-		fmt.Println("what we got: ", string(message))
-		userData = UserInfo{UserCn: string(message)}
 		app.Data.PrintAll()
 	}
 
-}
-
-func (app *App) Ping(ws *websocket.Conn, done chan struct{}) {
-	ticker := time.NewTicker(pingPeriod)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			if err := ws.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
-				log.Println("ping:", err)
-			}
-		case <-done:
-			return
-		}
-	}
 }

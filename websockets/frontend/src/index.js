@@ -41,6 +41,11 @@ let connect = cb => {
 
 let sendMsg = msg => {
   console.log("sending msg: ", msg);
+  var message = "";
+  if (msg !== "") {
+    message = msg;
+  }
+   
   socket.send(msg);
 };
 
