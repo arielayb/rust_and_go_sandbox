@@ -29,10 +29,10 @@ var upgrader = websocket.Upgrader{
 
 const (
 	// Time allowed to write a message to the peer.
-	writeWait = 4 * time.Second
+	//writeWait = 4 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	pongWait = 6 * time.Second
+	pongWait = 4 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	pingPeriod = (pongWait * 9) / 10
@@ -88,10 +88,8 @@ func (app *App) BroadcastMsg() {
 				if err != nil {
 					app.Data.Remove(key, client)
 				}
-				fmt.Println("the message to write: ", string(message))
 			}
 		}
-
 	}
 }
 
@@ -107,11 +105,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	// stdoutDone := make(chan struct{})
-	// go app.Ping(ws, stdoutDone)
-
 	var userData UserInfo
-	app.Data.Set(&userData, ws)
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
 	for {
@@ -124,12 +118,8 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fmt.Println("what we got: ", string(message))
 			userData.UserCn = string(message)
+			app.Data.Set(&userData, ws)
 		}
-		// message = bytes.TrimSpace(bytes.Replace(message, []byte{'\n'}, []byte{' '}, -1))
-		// app.Data.BroadcastMsg <- string(message)
-
-		// print out that message for clarity
 		app.Data.PrintAll()
 	}
-
 }

@@ -27,9 +27,9 @@ let connect = cb => {
 
   socket.onmessage = msg => {
     console.log(msg);
-    if (msg != "") {
+    // if (msg != "") {
       cb(msg);
-    }
+    // }
   };
 
   socket.onclose = event => {
@@ -43,12 +43,9 @@ let connect = cb => {
 
 let sendMsg = msg => {
   console.log("sending msg: ", msg);
-  var message = "";
   if (msg !== "") {
-    message = msg;
-  }
-   
-  socket.send(msg);
+    socket.send(msg);
+  }   
 };
 
 export { connect, sendMsg };
