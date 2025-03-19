@@ -8,7 +8,6 @@ trait DataPacketInterface {
     fn recv_msg(&self);
 }
 
-
 pub struct DataPacket {
     msg: String,
     size: u32,
@@ -34,10 +33,18 @@ impl DataPacketInterface for DataPacket {
             println!("* {header}");
         }
 
-        socket.send(Message::Text("Hello WebSocket".into())).unwrap();
+        socket.send(Message::Text("Hello rust web-socket".into())).unwrap();
         loop {
             let msg = socket.read().expect("Error reading message");
-            println!("Received: {msg}");
+            
+            if !msg.is_empty() && msg.is_text() {
+                let data = msg.to_text();
+                if data.is_err() {
+                    println!("data is either corrupted or empty");
+                }
+
+                println!("Received: {:?}", msg);
+            }
         }
             
         // socket.close(None);
