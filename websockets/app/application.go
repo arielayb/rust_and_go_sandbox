@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,7 +12,8 @@ import (
 )
 
 type App struct {
-	Data SafeStore
+	Data          SafeStore
+	ParentContext context.Context
 }
 
 // We'll need to define an Upgrader

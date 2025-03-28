@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"websockets/app"
@@ -15,9 +16,13 @@ type Task struct {
 
 func main() {
 	fmt.Println("Chatty Batty v0.1")
+	// parent context
+	ctx := context.Background()
+
 	// store := app.SafeStore
 	app := &app.App{
-		Data: *app.NewStore(),
+		Data:          *app.NewStore(),
+		ParentContext: ctx,
 	}
 
 	r := chi.NewRouter()
