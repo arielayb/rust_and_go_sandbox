@@ -1,15 +1,22 @@
-package app
+package app_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"websockets/app"
 
 	"github.com/gorilla/websocket"
 )
 
 var upgrade = websocket.Upgrader{}
+
+type UserInfo struct {
+	UserUUID string
+	Conn     *websocket.Conn
+}
 
 func echo(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrade.Upgrade(w, r, nil)
@@ -57,4 +64,40 @@ func TestExample(t *testing.T) {
 			t.Fatalf("bad message")
 		}
 	}
+}
+
+func TestSafeCacheStore(t *testing.T) {
+	// store := app.SafeStore
+	app := &app.App{
+		Cache: *app.NewStore(),
+	}
+
+	// Create test server with the echo handler.
+	s := httptest.NewServer(http.HandlerFunc(echo))
+	defer s.Close()
+
+	// Convert http://127.0.0.1 to ws://127.0.0.
+	u := "ws" + strings.TrimPrefix(s.URL, "http")
+
+	// Connect to the server
+	ws, _, err := websocket.DefaultDialer.Dial(u, nil)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	defer ws.Close()
+
+	userInfo := UserInfo{
+		UserUUID: "someUUID",
+		Conn:     ws,
+	}
+
+	userInfo2 := UserInfo{
+		UserUUID: "someUUID2",
+		Conn:     ws,
+	}
+
+	app.Cache.Clients.Enqueue(userInfo)
+	app.Cache.Clients.Enqueue(userInfo2)
+
+	fmt.Println("the Queue: ", app.Cache.Clients)
 }

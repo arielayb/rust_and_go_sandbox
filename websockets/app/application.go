@@ -12,7 +12,7 @@ import (
 )
 
 type App struct {
-	Data          SafeStore
+	Cache         SafeStore
 	ParentContext context.Context
 }
 
@@ -54,44 +54,35 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	}
 	//lastID++
 	//tasks[lastID] = task
-	app.Data.BroadcastMsg <- task
+	app.Cache.BroadcastMsg <- task
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(task)
 
 }
 
-func (app *App) BroadcastMsg() {
+func (app *App) BroadcastMsg(userInfo UserInfo, data string) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		message := ""
-		tempMap := app.Data.GetAll()
 		// Grab the next message from the broadcast channel
 		select {
-		case message = <-app.Data.BroadcastMsg:
-			fmt.Println("we got a message: ", message)
 		case <-ticker.C:
-			// client.SetWriteDeadline(time.Now().Add(writeWait))
-			for _, client := range tempMap {
-				if err := client.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
-					return
-				}
+			if err := userInfo.Conn.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
+				return
 			}
+
 		}
 
-		js, errjs := json.Marshal(message)
+		js, errjs := json.Marshal(data)
 		if errjs != nil {
 			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
 		}
 
 		// Send the message to all connected clients
-		for key, client := range tempMap {
-			if len(message) != 0 {
-				err := client.WriteMessage(websocket.TextMessage, js)
-				if err != nil {
-					app.Data.Remove(key, client)
-				}
-			}
+		err := userInfo.Conn.WriteMessage(websocket.TextMessage, js)
+		if err != nil {
+			app.Cache.Remove()
 		}
+
 	}
 }
 
@@ -107,7 +98,6 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	var userData UserInfo
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
 	for {
@@ -119,9 +109,8 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			break
 		} else {
 			fmt.Println("what we got: ", string(message))
-			userData.UserCn = string(message)
-			app.Data.Set(&userData, ws)
+			app.Cache.Set(string(message), ws)
 		}
-		app.Data.PrintAll()
+		app.Cache.PrintAll()
 	}
 }

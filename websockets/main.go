@@ -21,7 +21,7 @@ func main() {
 
 	// store := app.SafeStore
 	app := &app.App{
-		Data:          *app.NewStore(),
+		Cache:         *app.NewStore(),
 		ParentContext: ctx,
 	}
 
@@ -35,7 +35,7 @@ func main() {
 		})
 	})
 
-	go app.BroadcastMsg()
+	// go app.BroadcastMsg()
 
 	// start the websocket
 	http.HandleFunc("/ws", app.ServeWs)
