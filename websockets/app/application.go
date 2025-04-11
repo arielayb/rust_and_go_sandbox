@@ -43,7 +43,7 @@ const (
 	maxMessageSize = 512
 )
 
-func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
+func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	r.Header.Add("Content-Type", "application/json")
 	var task string
 	err := json.NewDecoder(r.Body).Decode(&task)
@@ -54,13 +54,13 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	}
 	//lastID++
 	//tasks[lastID] = task
-	app.Cache.BroadcastMsg <- task
+	application.Cache.BroadcastMsg <- task
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(task)
 
 }
 
-func (app *App) BroadcastMsg(userInfo UserInfo, data string) {
+func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
 		// Grab the next message from the broadcast channel
@@ -69,25 +69,27 @@ func (app *App) BroadcastMsg(userInfo UserInfo, data string) {
 			if err := userInfo.Conn.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
 				return
 			}
-
+		case <-ctx.Done():
+			fmt.Println("Closing write goroutine")
 		}
 
-		js, errjs := json.Marshal(data)
+		js, errjs := json.Marshal(userInfo.UserMsg)
 		if errjs != nil {
 			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
 		}
 
-		// Send the message to all connected clients
-		err := userInfo.Conn.WriteMessage(websocket.TextMessage, js)
-		if err != nil {
-			app.Cache.Remove()
+		if userInfo.UserMsg != "" {
+			// Send the message to all connected clients
+			err := userInfo.Conn.WriteMessage(websocket.TextMessage, js)
+			if err != nil {
+				application.Cache.Remove()
+			}
 		}
-
 	}
 }
 
 // define our WebSocket endpoint
-func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
+func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Host)
 
 	// upgrade this connection to a WebSocket
@@ -107,10 +109,23 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 				log.Printf("error: %v", err)
 			}
 			break
-		} else {
-			fmt.Println("what we got: ", string(message))
-			app.Cache.Set(string(message), ws)
 		}
-		app.Cache.PrintAll()
+
+		userInfo := UserInfo{
+			UserMsg: string(message),
+			Conn:    ws,
+		}
+
+		// select {
+		// case app.SafeStore.BroadcastMsg <- message:
+
+		// }
+
+		fmt.Println("what we got: ", string(message))
+		application.Cache.Set(string(message), ws)
+
+		go application.BroadcastMsg(application.ParentContext, &userInfo)
+
+		application.Cache.PrintAll()
 	}
 }

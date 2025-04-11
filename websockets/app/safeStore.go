@@ -8,8 +8,8 @@ import (
 )
 
 type UserInfo struct {
-	UserUUID string
-	Conn     *websocket.Conn
+	UserMsg string
+	Conn    *websocket.Conn
 }
 
 type SafeStore struct {
@@ -27,10 +27,10 @@ func NewStore() *SafeStore {
 
 }
 
-func (ss *SafeStore) Set(userUUID string, ws *websocket.Conn) {
+func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) {
 	userInfo := UserInfo{
-		UserUUID: userUUID,
-		Conn:     ws,
+		UserMsg: userMsg,
+		Conn:    ws,
 	}
 
 	ss.mu.Lock()

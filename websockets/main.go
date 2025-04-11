@@ -17,9 +17,7 @@ type Task struct {
 func main() {
 	fmt.Println("Chatty Batty v0.1")
 	// parent context
-	ctx := context.Background()
-
-	// store := app.SafeStore
+	ctx, stop := context.WithCancel(context.Background())
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
@@ -43,4 +41,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	stop()
 }
