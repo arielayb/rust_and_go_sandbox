@@ -7,14 +7,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	USER_UUID string = "USER_UUID"
+)
+
 type UserInfo struct {
-	UserMsg string
-	Conn    *websocket.Conn
+	UserUUID string `json:"user_uuid"`
+	Method   string `json:"method"`
+	Conn     *websocket.Conn
 }
 
 type SafeStore struct {
 	Clients      Queue
 	mu           sync.Mutex
+	USER_UUID    UserInfo
 	BroadcastMsg chan string
 }
 
@@ -29,8 +35,8 @@ func NewStore() *SafeStore {
 
 func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) {
 	userInfo := UserInfo{
-		UserMsg: userMsg,
-		Conn:    ws,
+		UserUUID: userMsg,
+		Conn:     ws,
 	}
 
 	ss.mu.Lock()
