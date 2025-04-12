@@ -60,27 +60,27 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
+func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
-			if err := userInfo.Conn.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
+			if err := ws.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
 				return
 			}
 		case <-ctx.Done():
 			fmt.Println("Closing write goroutine")
 		}
 
-		js, errjs := json.Marshal(userInfo.UserMsg)
+		js, errjs := json.Marshal(userInfo.Method)
 		if errjs != nil {
 			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
 		}
 
-		if userInfo.UserMsg != "" {
+		if userInfo.UserUUID != "" {
 			// Send the message to all connected clients
-			err := userInfo.Conn.WriteMessage(websocket.TextMessage, js)
+			err := ws.WriteMessage(websocket.TextMessage, js)
 			if err != nil {
 				application.Cache.Remove()
 			}
@@ -111,20 +111,19 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		userInfo := UserInfo{
-			UserMsg: string(message),
-			Conn:    ws,
+		var userInfo UserInfo
+		err = json.Unmarshal(message, &userInfo)
+		if err != nil {
+			fmt.Println("Cannot unmarshal the json message!!!")
 		}
 
-		// select {
-		// case app.SafeStore.BroadcastMsg <- message:
+		switch userInfo.Method {
+		case USER_UUID:
+			fmt.Println("what we got: ", userInfo.UserUUID)
+			application.Cache.Set(userInfo.UserUUID, ws)
+		}
 
-		// }
-
-		fmt.Println("what we got: ", string(message))
-		application.Cache.Set(string(message), ws)
-
-		go application.BroadcastMsg(application.ParentContext, &userInfo)
+		go application.BroadcastMsg(application.ParentContext, userInfo, ws)
 
 		application.Cache.PrintAll()
 	}
