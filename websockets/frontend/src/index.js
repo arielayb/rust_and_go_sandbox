@@ -27,7 +27,12 @@ let connect = cb => {
 
   socket.onmessage = msg => {
     if (msg !== "") {
-      cb(msg);
+      let data =  {
+        user_uuid: crypto.randomUUID(),
+        method: "USER_UUID",
+        message: "hello",
+      };
+      cb(data.message);
     }
   };
 
@@ -47,6 +52,7 @@ let sendMsg = msg => {
     let data =  {
       user_uuid: crypto.randomUUID(),
       method: "USER_UUID",
+      message: msg
     };
     socket.send(JSON.stringify(data));
   }   

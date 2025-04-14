@@ -73,12 +73,12 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws 
 			fmt.Println("Closing write goroutine")
 		}
 
-		js, errjs := json.Marshal(userInfo.Method)
+		js, errjs := json.Marshal(userInfo.Message)
 		if errjs != nil {
 			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
 		}
 
-		if userInfo.UserUUID != "" {
+		if userInfo.UserUUID == "" {
 			// Send the message to all connected clients
 			err := ws.WriteMessage(websocket.TextMessage, js)
 			if err != nil {
@@ -91,6 +91,7 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws 
 // define our WebSocket endpoint
 func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Host)
+	application.Cache.storeCache = false
 
 	// upgrade this connection to a WebSocket
 	// connection
@@ -123,8 +124,14 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			application.Cache.Set(userInfo.UserUUID, ws)
 		}
 
+		application.Cache.storeCache = true
+
 		go application.BroadcastMsg(application.ParentContext, userInfo, ws)
 
 		application.Cache.PrintAll()
+
 	}
+	application.Cache.PrintAll()
+
+	application.Cache.Clients.Dequeue()
 }

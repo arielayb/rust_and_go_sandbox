@@ -1,12 +1,12 @@
 package app
 
-type Stack []any
+type Stack []UserInfo
 
-func (s *Stack) Push(value any) {
+func (s *Stack) Push(value UserInfo) {
 	*s = append(*s, value)
 }
 
-func (s *Stack) Pop() any {
+func (s *Stack) Pop() UserInfo {
 	result := (*s)[len(*s)-1]
 	*s = (*s)[:len(*s)-1]
 
@@ -18,11 +18,11 @@ type Queue struct {
 	out Stack
 }
 
-func (q *Queue) Enqueue(value any) {
+func (q *Queue) Enqueue(value UserInfo) {
 	q.in.Push(value)
 }
 
-func (q *Queue) Dequeue() any {
+func (q *Queue) Dequeue() UserInfo {
 	if len(q.out) == 0 {
 		for len(q.in) > 0 {
 			q.out.Push(q.in.Pop())

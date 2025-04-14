@@ -14,6 +14,7 @@ const (
 type UserInfo struct {
 	UserUUID string `json:"user_uuid"`
 	Method   string `json:"method"`
+	Message  string `json:"message"`
 	Conn     *websocket.Conn
 }
 
@@ -22,6 +23,7 @@ type SafeStore struct {
 	mu           sync.Mutex
 	USER_UUID    UserInfo
 	BroadcastMsg chan string
+	storeCache   bool
 }
 
 func NewStore() *SafeStore {
@@ -44,9 +46,27 @@ func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) {
 	ss.mu.Unlock()
 }
 
+func (ss *SafeStore) Get(userUUID string) string {
+	var currentMap Stack
+	if len(ss.Clients.in) != 0 {
+		currentMap = ss.GetAll().in
+	} else {
+		currentMap = ss.GetAll().out
+	}
+	for _, val := range currentMap {
+		if val.UserUUID == userUUID {
+			return val.UserUUID
+		}
+
+	}
+
+	return "user not found!"
+}
+
 func (ss *SafeStore) Remove() {
 	ss.mu.Lock()
 	ss.Clients.Dequeue()
+	copy(ss.Clients.in, ss.Clients.out)
 	ss.mu.Unlock()
 }
 
