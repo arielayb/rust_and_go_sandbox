@@ -131,7 +131,6 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		application.Cache.PrintAll()
 
 	}
-	application.Cache.PrintAll()
 
-	application.Cache.Clients.Dequeue()
+	application.Cache.Remove()
 }
