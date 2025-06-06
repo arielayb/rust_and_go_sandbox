@@ -33,8 +33,6 @@ func main() {
 		})
 	})
 
-	// go app.BroadcastMsg()
-
 	// start the websocket
 	http.HandleFunc("/ws", app.ServeWs)
 	err := http.ListenAndServe(":8080", nil)

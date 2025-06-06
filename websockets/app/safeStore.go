@@ -20,8 +20,8 @@ type UserInfo struct {
 
 type SafeStore struct {
 	Clients      Queue
-	mu           sync.Mutex
-	USER_UUID    UserInfo
+	mu           *sync.Mutex
+	UserInfo     *UserInfo
 	BroadcastMsg chan string
 	storeCache   bool
 }
@@ -29,7 +29,8 @@ type SafeStore struct {
 func NewStore() *SafeStore {
 	return &SafeStore{
 		Clients:      Queue{},
-		mu:           sync.Mutex{},
+		mu:           &sync.Mutex{},
+		UserInfo:     &UserInfo{},
 		BroadcastMsg: make(chan string),
 	}
 

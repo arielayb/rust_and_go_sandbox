@@ -86,18 +86,18 @@ func TestSafeCacheStore(t *testing.T) {
 	}
 	defer ws.Close()
 
-	userInfo := UserInfo{
-		UserUUID: "someUUID",
-		Conn:     ws,
-	}
+	// userInfo := UserInfo{
+	// 	UserUUID: "someUUID",
+	// 	Conn:     ws,
+	// }
 
-	userInfo2 := UserInfo{
-		UserUUID: "someUUID2",
-		Conn:     ws,
-	}
+	// userInfo2 := UserInfo{
+	// 	UserUUID: "someUUID2",
+	// 	Conn:     ws,
+	// }
 
-	app.Cache.Clients.Enqueue(userInfo)
-	app.Cache.Clients.Enqueue(userInfo2)
+	app.Cache.Clients.Enqueue(*app.Cache.UserInfo)
+	app.Cache.Clients.Enqueue(*app.Cache.UserInfo)
 
 	fmt.Println("the Queue: ", app.Cache.Clients)
 }

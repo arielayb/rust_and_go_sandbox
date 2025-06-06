@@ -78,8 +78,9 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws 
 			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
 		}
 
-		if userInfo.UserUUID == "" {
+		if userInfo.UserUUID == application.Cache.Get(userInfo.UserUUID) {
 			// Send the message to all connected clients
+			log.Printf("Sending the message: %s", userInfo.Message)
 			err := ws.WriteMessage(websocket.TextMessage, js)
 			if err != nil {
 				application.Cache.Remove()
