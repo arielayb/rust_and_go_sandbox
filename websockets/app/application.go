@@ -66,7 +66,7 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws 
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
-			if err := ws.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
+			if err := ws.WriteMessage(websocket.PingMessage, []byte("")); err != nil {
 				return
 			}
 		case <-ctx.Done():
@@ -121,8 +121,10 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 		switch userInfo.Method {
 		case USER_UUID:
-			fmt.Println("what we got: ", userInfo.UserUUID)
-			application.Cache.Set(userInfo.UserUUID, ws)
+			if !application.Cache.storeCache {
+				fmt.Println("what we got: ", userInfo.UserUUID)
+				application.Cache.Set(userInfo.UserUUID, ws)
+			}
 		}
 
 		application.Cache.storeCache = true
