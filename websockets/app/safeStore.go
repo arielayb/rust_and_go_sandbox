@@ -14,7 +14,7 @@ const (
 type UserInfo struct {
 	UserUUID string `json:"user_uuid"`
 	Method   string `json:"method"`
-	Message  string `json:"message"`
+	Message  string `json:"alert_msg"`
 	Conn     *websocket.Conn
 }
 
@@ -36,7 +36,7 @@ func NewStore() *SafeStore {
 
 }
 
-func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) {
+func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) *UserInfo {
 	userInfo := UserInfo{
 		UserUUID: userMsg,
 		Conn:     ws,
@@ -45,16 +45,12 @@ func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) {
 	ss.mu.Lock()
 	ss.Clients.Enqueue(userInfo)
 	ss.mu.Unlock()
+
+	return &userInfo
 }
 
 func (ss *SafeStore) Get(userUUID string) string {
-	var currentMap Stack
-	if len(ss.Clients.in) != 0 {
-		currentMap = ss.GetAll().in
-	} else {
-		currentMap = ss.GetAll().out
-	}
-	for _, val := range currentMap {
+	for _, val := range ss.GetAll().in {
 		if val.UserUUID == userUUID {
 			return val.UserUUID
 		}

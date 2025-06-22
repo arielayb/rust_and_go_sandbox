@@ -23,6 +23,11 @@ let connect = cb => {
 
   socket.onopen = () => {
     console.log("Successfully Connected");
+    this.data =  {
+      user_uuid: crypto.randomUUID(),
+      method: "USER_UUID",
+      alert_msg: "hello",
+    };
   };
 
   socket.onmessage = msg => {
@@ -30,9 +35,9 @@ let connect = cb => {
       let data =  {
         user_uuid: crypto.randomUUID(),
         method: "USER_UUID",
-        message: "hello",
+        alert_msg: "hello",
       };
-      cb(data.message);
+      cb(data.alert_msg);
     }
   };
 
@@ -52,7 +57,7 @@ let sendMsg = msg => {
     let data =  {
       user_uuid: crypto.randomUUID(),
       method: "USER_UUID",
-      message: msg
+      alert_msg: msg
     };
     socket.send(JSON.stringify(data));
   }   

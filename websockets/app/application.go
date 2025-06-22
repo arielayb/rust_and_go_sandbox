@@ -37,30 +37,10 @@ const (
 	pongWait = 4 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-
-	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	pingPeriod = (pongWait * 4) / 10
 )
 
-func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
-	r.Header.Add("Content-Type", "application/json")
-	var task string
-	err := json.NewDecoder(r.Body).Decode(&task)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	//lastID++
-	//tasks[lastID] = task
-	application.Cache.BroadcastMsg <- task
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(task)
-
-}
-
-func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws *websocket.Conn) {
+func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
 		// Grab the next message from the broadcast channel
@@ -87,6 +67,22 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo UserInfo, ws 
 			}
 		}
 	}
+}
+
+func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
+	r.Header.Add("Content-Type", "application/json")
+	var task UserInfo
+	err := json.NewDecoder(r.Body).Decode(&task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	//lastID++
+	//tasks[lastID] = task
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(task)
+
 }
 
 // define our WebSocket endpoint
@@ -123,17 +119,15 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		case USER_UUID:
 			if !application.Cache.storeCache {
 				fmt.Println("what we got: ", userInfo.UserUUID)
-				application.Cache.Set(userInfo.UserUUID, ws)
+				userSocketInfo := application.Cache.Set(userInfo.UserUUID, ws)
+				application.Cache.storeCache = true
+				go application.BroadcastMsg(application.ParentContext, userSocketInfo, ws)
+				application.Cache.PrintAll()
 			}
 		}
-
-		application.Cache.storeCache = true
-
-		go application.BroadcastMsg(application.ParentContext, userInfo, ws)
-
-		application.Cache.PrintAll()
-
 	}
 
-	application.Cache.Remove()
+	if application.Cache.storeCache {
+		application.Cache.Remove()
+	}
 }
