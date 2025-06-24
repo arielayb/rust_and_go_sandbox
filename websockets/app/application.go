@@ -15,6 +15,7 @@ type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
 	Post          UserWebInfo
+	ChanMsg       chan string
 }
 
 // We'll need to define an Upgrader
@@ -41,7 +42,7 @@ const (
 	pingPeriod = (pongWait * 4) / 10
 )
 
-func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
+func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserWebInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
 		// Grab the next message from the broadcast channel
@@ -66,6 +67,7 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 			if err != nil {
 				application.Cache.Remove()
 			}
+
 		}
 	}
 }
@@ -82,7 +84,8 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	//tasks[lastID] = task
 	log.Println("post response: ", task.AlertMsg)
 
-	application.Post.UserUUID = task.UserUUID
+	// application.Post.UserUUID = task.UserUUID
+	application.ChanMsg <- task.AlertMsg
 }
 
 // define our WebSocket endpoint
@@ -117,12 +120,16 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 		switch userInfo.Method {
 		case USER_INFO:
+			alertMsg := ""
 			if !application.Cache.storeCache {
+				alertMsg = <-application.ChanMsg
 				fmt.Println("what we got: ", userInfo.UserUUID)
-				fmt.Println("what we got msg: ", userInfo.AlertMsg)
-				userSocketInfo := application.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
+				fmt.Println("what we got msg: ", alertMsg)
+				userInfo.AlertMsg = alertMsg
+				// userSocketInfo := application.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
+				application.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
 				application.Cache.storeCache = true
-				go application.BroadcastMsg(application.ParentContext, userSocketInfo, ws)
+				go application.BroadcastMsg(application.ParentContext, userInfo, ws)
 				application.Cache.PrintAll()
 			}
 		}

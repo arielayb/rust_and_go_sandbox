@@ -36,7 +36,7 @@ func NewStore() *SafeStore {
 
 }
 
-func (ss *SafeStore) Set(userId string, userMsg string, ws *websocket.Conn) *UserInfo {
+func (ss *SafeStore) Set(userId string, userMsg string, ws *websocket.Conn) {
 	userInfo := UserInfo{
 		UserUUID: userId,
 		Method:   "USER_INFO",
@@ -47,8 +47,6 @@ func (ss *SafeStore) Set(userId string, userMsg string, ws *websocket.Conn) *Use
 	ss.mu.Lock()
 	ss.Clients.Enqueue(userInfo)
 	ss.mu.Unlock()
-
-	return &userInfo
 }
 
 func (ss *SafeStore) Get(userUUID string) string {

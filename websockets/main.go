@@ -21,6 +21,7 @@ func main() {
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
+		ChanMsg:       make(chan string),
 	}
 
 	r := chi.NewRouter()
