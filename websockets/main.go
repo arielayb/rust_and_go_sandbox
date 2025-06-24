@@ -34,8 +34,8 @@ func main() {
 	})
 
 	// start the websocket
-	http.HandleFunc("/ws", app.ServeWs)
-	err := http.ListenAndServe(":8080", nil)
+	r.HandleFunc("/ws", app.ServeWs)
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		fmt.Println(err)
 	}

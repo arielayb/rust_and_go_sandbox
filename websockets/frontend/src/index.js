@@ -20,7 +20,7 @@ var socket = new WebSocket("ws://localhost:8080/ws");
 
 var dataInit = { 
   user_uuid: crypto.randomUUID(),
-  method: "USER_UUID",
+  method: "USER_INFO",
   alert_msg: "",
 };
 
@@ -33,11 +33,11 @@ let connect = cb => {
 
   socket.onmessage = msg => {
     if (msg !== "") {
-      // let data =  {
-      //   user_uuid: crypto.randomUUID(),
-      //   method: "USER_UUID",
-      //   alert_msg: "hello",
-      // };
+      let data =  {
+        user_uuid: crypto.randomUUID(),
+        method: "USER_INFO",
+        alert_msg: "hello",
+      };
       cb(dataInit.alert_msg);
     }
   };

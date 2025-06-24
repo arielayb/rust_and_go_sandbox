@@ -14,6 +14,7 @@ import (
 type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
+	Post          UserWebInfo
 }
 
 // We'll need to define an Upgrader
@@ -53,14 +54,14 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 			fmt.Println("Closing write goroutine")
 		}
 
-		js, errjs := json.Marshal(userInfo.Message)
+		js, errjs := json.Marshal(userInfo)
 		if errjs != nil {
 			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
 		}
 
 		if userInfo.UserUUID == application.Cache.Get(userInfo.UserUUID) {
 			// Send the message to all connected clients
-			log.Printf("Sending the message: %s", userInfo.Message)
+			log.Println("Sending the message: ", userInfo)
 			err := ws.WriteMessage(websocket.TextMessage, js)
 			if err != nil {
 				application.Cache.Remove()
@@ -71,7 +72,7 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 
 func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	r.Header.Add("Content-Type", "application/json")
-	var task UserInfo
+	var task UserWebInfo
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -79,10 +80,9 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	}
 	//lastID++
 	//tasks[lastID] = task
+	log.Println("post response: ", task.AlertMsg)
 
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(task)
-
+	application.Post.UserUUID = task.UserUUID
 }
 
 // define our WebSocket endpoint
@@ -109,17 +109,18 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var userInfo UserInfo
+		var userInfo *UserWebInfo
 		err = json.Unmarshal(message, &userInfo)
 		if err != nil {
 			fmt.Println("Cannot unmarshal the json message!!!")
 		}
 
 		switch userInfo.Method {
-		case USER_UUID:
+		case USER_INFO:
 			if !application.Cache.storeCache {
 				fmt.Println("what we got: ", userInfo.UserUUID)
-				userSocketInfo := application.Cache.Set(userInfo.UserUUID, ws)
+				fmt.Println("what we got msg: ", userInfo.AlertMsg)
+				userSocketInfo := application.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
 				application.Cache.storeCache = true
 				go application.BroadcastMsg(application.ParentContext, userSocketInfo, ws)
 				application.Cache.PrintAll()

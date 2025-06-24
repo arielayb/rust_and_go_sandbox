@@ -36,9 +36,11 @@ func NewStore() *SafeStore {
 
 }
 
-func (ss *SafeStore) Set(userMsg string, ws *websocket.Conn) *UserInfo {
+func (ss *SafeStore) Set(userId string, userMsg string, ws *websocket.Conn) *UserInfo {
 	userInfo := UserInfo{
-		UserUUID: userMsg,
+		UserUUID: userId,
+		Method:   "USER_INFO",
+		Message:  userMsg,
 		Conn:     ws,
 	}
 
