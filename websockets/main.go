@@ -18,10 +18,17 @@ func main() {
 	fmt.Println("Chatty Batty v0.1")
 	// parent context
 	ctx, stop := context.WithCancel(context.Background())
+
+	initPostMsg := app.UserWebInfo{
+		UserUUID: "",
+		Method:   "USER_UUID",
+		Message:  "",
+	}
+
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
-		ChanMsg:       make(chan string),
+		Post:          initPostMsg,
 	}
 
 	r := chi.NewRouter()
