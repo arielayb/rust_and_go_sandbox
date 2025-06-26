@@ -14,7 +14,7 @@ import (
 type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
-	Post          UserWebInfo
+	Post          *UserWebInfo
 }
 
 // We'll need to define an Upgrader
@@ -44,6 +44,7 @@ const (
 func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
+		userInfo.Message = ""
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
@@ -71,6 +72,8 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 				err := ws.WriteMessage(websocket.TextMessage, js)
 				if err != nil {
 					application.Cache.Remove()
+				} else {
+					application.Post.Message = ""
 				}
 			}
 		}
@@ -88,7 +91,7 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("post response: ", task)
 
-	application.Post = task
+	application.Post = &task
 }
 
 // define our WebSocket endpoint

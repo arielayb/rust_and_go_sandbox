@@ -28,7 +28,7 @@ func main() {
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
-		Post:          initPostMsg,
+		Post:          &initPostMsg,
 	}
 
 	r := chi.NewRouter()
