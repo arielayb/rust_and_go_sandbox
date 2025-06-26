@@ -4,6 +4,7 @@ import (
   "context"
   "log"
   "time"
+  "fmt"
   "net/http"
   "github.com/gorilla/websocket"
   amqp "github.com/rabbitmq/amqp091-go"
@@ -31,7 +32,7 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
   
   log.Println("Client Connected")
   
-  err = ws.WriteMessage(1, &#91;]byte("Hi Client!"))
+  err = ws.WriteMessage(1, []byte("Hi Client!"))
   if err != nil {
     log.Println(err)
   }
@@ -56,6 +57,15 @@ func reader(conn *websocket.Conn) {
       return
     }
   }
+}
+
+func homePage(w http.ResponseWriter, r *http.Request) {
+  fmt.Fprintf(w, "Home Page")
+}
+
+func setupRoutes() {
+  http.HandleFunc("/", homePage)
+  http.HandleFunc("/ws", wsEndpoint)
 }
 
 func main() {
@@ -94,5 +104,8 @@ func main() {
   
   failOnError(err, "Failed to publish a message")
   log.Printf(" [x] Sent %s\n", body)
+
+  setupRoutes()
+  log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
