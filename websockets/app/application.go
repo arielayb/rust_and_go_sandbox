@@ -15,6 +15,7 @@ type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
 	Post          *UserWebInfo
+	ChanMsg       chan string
 }
 
 // We'll need to define an Upgrader
@@ -53,27 +54,25 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 			}
 		case <-ctx.Done():
 			fmt.Println("Closing write goroutine")
-		}
+		case userInfo.Message = <-application.ChanMsg:
+			if application.Post.Message != "" {
+				userInfo.Message = application.Post.Message
+				userInfo.UserUUID = application.Post.UserUUID
+			}
 
-		if application.Post.Message != "" {
-			userInfo.Message = application.Post.Message
-			userInfo.UserUUID = application.Post.UserUUID
-		}
+			js, errjs := json.Marshal(userInfo.Message)
+			if errjs != nil {
+				log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
+			}
 
-		js, errjs := json.Marshal(userInfo.Message)
-		if errjs != nil {
-			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
-		}
-
-		if userInfo.Message != "" {
-			if userInfo.UserUUID == application.Cache.Get(userInfo.UserUUID, ws) {
-				// Send the message to all connected clients
-				log.Println("Sending the message: ", userInfo.Message)
-				err := ws.WriteMessage(websocket.TextMessage, js)
-				if err != nil {
-					application.Cache.Remove()
-				} else {
-					application.Post.Message = ""
+			if userInfo.Message != "" {
+				if userInfo.UserUUID == application.Cache.Get(userInfo.UserUUID, ws) {
+					// Send the message to all connected clients
+					log.Println("Sending the message: ", userInfo.Message)
+					err := ws.WriteMessage(websocket.TextMessage, js)
+					if err != nil {
+						application.Cache.Remove()
+					}
 				}
 			}
 		}
@@ -89,9 +88,10 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	application.Post = &task
 	log.Println("post response: ", task)
 
-	application.Post = &task
+	application.ChanMsg <- task.Message
 }
 
 // define our WebSocket endpoint
