@@ -42,7 +42,7 @@ const (
 	pingPeriod = (pongWait * 4) / 10
 )
 
-func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
+func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
 		userInfo.Message = ""
@@ -54,10 +54,10 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 			}
 		case <-ctx.Done():
 			fmt.Println("Closing write goroutine")
-		case userInfo.Message = <-application.ChanMsg:
-			if application.Post.Message != "" {
-				userInfo.Message = application.Post.Message
-				userInfo.UserUUID = application.Post.UserUUID
+		case userInfo.Message = <-app.ChanMsg:
+			if app.Post.Message != "" {
+				userInfo.Message = app.Post.Message
+				userInfo.UserUUID = app.Post.UserUUID
 			}
 
 			js, errjs := json.Marshal(userInfo.Message)
@@ -66,12 +66,12 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 			}
 
 			if userInfo.Message != "" {
-				if userInfo.UserUUID == application.Cache.Get(userInfo.UserUUID, ws) {
+				if userInfo.UserUUID == app.Cache.Get(userInfo.UserUUID, ws) {
 					// Send the message to all connected clients
 					log.Println("Sending the message: ", userInfo.Message)
 					err := ws.WriteMessage(websocket.TextMessage, js)
 					if err != nil {
-						application.Cache.Remove()
+						app.Cache.Remove()
 					}
 				}
 			}
@@ -79,8 +79,8 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 	}
 }
 
-func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
-	r.Header.Add("Content-Type", "application/json")
+func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
+	r.Header.Add("Content-Type", "app/json")
 	var task UserWebInfo
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
@@ -88,16 +88,16 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	application.Post = &task
+	app.Post = &task
 	log.Println("post response: ", task)
 
-	application.ChanMsg <- task.Message
+	app.ChanMsg <- task.Message
 }
 
 // define our WebSocket endpoint
-func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
+func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Host)
-	application.Cache.storeCache = false
+	app.Cache.storeCache = false
 
 	// upgrade this connection to a WebSocket
 	// connection
@@ -109,6 +109,7 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
+	var userSocketInfo *UserInfo
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
@@ -124,20 +125,19 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Cannot unmarshal the json message!!!")
 		}
 
-		var userSocketInfo *UserInfo
 		switch userInfo.Method {
 		case USER_INFO:
-			if !application.Cache.storeCache {
-				userSocketInfo = application.Cache.Set(userInfo.UserUUID, userInfo.Message, ws)
-				// application.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
-				application.Cache.storeCache = true
-				go application.BroadcastMsg(application.ParentContext, userSocketInfo, ws)
-				application.Cache.PrintAll()
+			if !app.Cache.storeCache {
+				userSocketInfo = app.Cache.Set(userInfo.UserUUID, userInfo.Message, ws)
+				// app.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
+				app.Cache.storeCache = true
+				go app.BroadcastMsg(app.ParentContext, userSocketInfo, ws)
+				app.Cache.PrintAll()
 			}
 		}
 	}
 
-	if application.Cache.storeCache {
-		application.Cache.Remove()
+	if app.Cache.storeCache && userSocketInfo.UserUUID == app.Cache.Get(userSocketInfo.UserUUID, ws) {
+		app.Cache.Remove()
 	}
 }
