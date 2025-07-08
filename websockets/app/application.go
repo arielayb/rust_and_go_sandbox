@@ -92,6 +92,9 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 	log.Println("post response: ", task)
 
 	app.ChanMsg <- task.Message
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
 // define our WebSocket endpoint
