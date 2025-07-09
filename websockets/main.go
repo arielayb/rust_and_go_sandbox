@@ -22,7 +22,7 @@ func main() {
 	initPostMsg := app.UserWebInfo{
 		UserUUID: "",
 		Method:   "USER_UUID",
-		Message:  "",
+		Message:  nil,
 	}
 
 	app := &app.App{

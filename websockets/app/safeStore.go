@@ -12,9 +12,9 @@ const (
 )
 
 type UserInfo struct {
-	UserUUID string `json:"user_uuid"`
-	Method   string `json:"method"`
-	Message  string `json:"msg"`
+	UserUUID string   `json:"user_uuid"`
+	Method   string   `json:"method"`
+	Message  []string `json:"msg"`
 	Conn     *websocket.Conn
 }
 
@@ -36,7 +36,7 @@ func NewStore() *SafeStore {
 
 }
 
-func (ss *SafeStore) Set(userId string, userMsg string, ws *websocket.Conn) *UserInfo {
+func (ss *SafeStore) Set(userId string, userMsg []string, ws *websocket.Conn) *UserInfo {
 	userInfo := UserInfo{
 		UserUUID: userId,
 		Method:   "USER_INFO",

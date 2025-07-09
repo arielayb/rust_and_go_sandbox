@@ -45,7 +45,7 @@ const (
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		userInfo.Message = ""
+		userInfo.Message = nil
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
@@ -54,26 +54,25 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 			}
 		case <-ctx.Done():
 			fmt.Println("Closing write goroutine")
-		case userInfo.Message = <-app.ChanMsg:
-			if app.Post.Message != "" {
-				userInfo.Message = app.Post.Message
-				userInfo.UserUUID = app.Post.UserUUID
-			}
+		}
 
-			js, errjs := json.Marshal(userInfo.Message)
-			if errjs != nil {
-				log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
-			}
+		if len(app.Post.Message) > 0 {
+			userInfo.Message = app.Post.Message
+			userInfo.UserUUID = app.Post.UserUUID
+		}
 
-			if userInfo.Message != "" {
-				if userInfo.UserUUID == app.Cache.Get(userInfo.UserUUID, ws) {
+		if len(userInfo.Message) > 0 {
+			if userInfo.UserUUID == app.Cache.Get(userInfo.UserUUID, ws) {
+				for msg := range app.Post.Message {
 					// Send the message to all connected clients
-					log.Println("Sending the message: ", userInfo.Message)
-					err := ws.WriteMessage(websocket.TextMessage, js)
+					log.Println("Sending the message: ", app.Post.Message[msg])
+					err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post.Message[msg]))
 					if err != nil {
 						app.Cache.Remove()
 					}
+					time.Sleep(1 * time.Second)
 				}
+				app.Post.Message = nil
 			}
 		}
 	}
@@ -90,9 +89,6 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 
 	app.Post = &task
 	log.Println("post response: ", task)
-
-	app.ChanMsg <- task.Message
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
