@@ -15,6 +15,7 @@ type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
 	Post          *UserWebInfo
+	ChanMsg       chan string
 }
 
 // We'll need to define an Upgrader
@@ -41,10 +42,10 @@ const (
 	pingPeriod = (pongWait * 4) / 10
 )
 
-func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
+func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		userInfo.Message = ""
+		userInfo.Message = nil
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
@@ -55,33 +56,30 @@ func (application *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws
 			fmt.Println("Closing write goroutine")
 		}
 
-		if application.Post.Message != "" {
-			userInfo.Message = application.Post.Message
-			userInfo.UserUUID = application.Post.UserUUID
+		if len(app.Post.Message) > 0 {
+			userInfo.Message = app.Post.Message
+			userInfo.UserUUID = app.Post.UserUUID
 		}
 
-		js, errjs := json.Marshal(userInfo.Message)
-		if errjs != nil {
-			log.Fatal("Cannot pack the message as a JSON message!", "ERROR", errjs)
-		}
-
-		if userInfo.Message != "" {
-			if userInfo.UserUUID == application.Cache.Get(userInfo.UserUUID, ws) {
-				// Send the message to all connected clients
-				log.Println("Sending the message: ", userInfo.Message)
-				err := ws.WriteMessage(websocket.TextMessage, js)
-				if err != nil {
-					application.Cache.Remove()
-				} else {
-					application.Post.Message = ""
+		if len(userInfo.Message) > 0 {
+			if userInfo.UserUUID == app.Cache.Get(userInfo.UserUUID, ws) {
+				for msg := range app.Post.Message {
+					// Send the message to all connected clients
+					log.Println("Sending the message: ", app.Post.Message[msg])
+					err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post.Message[msg]))
+					if err != nil {
+						app.Cache.Remove()
+					}
+					time.Sleep(1 * time.Second)
 				}
+				app.Post.Message = nil
 			}
 		}
 	}
 }
 
-func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
-	r.Header.Add("Content-Type", "application/json")
+func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
+	r.Header.Add("Content-Type", "app/json")
 	var task UserWebInfo
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
@@ -89,15 +87,16 @@ func (application *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	app.Post = &task
 	log.Println("post response: ", task)
-
-	application.Post = &task
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
 // define our WebSocket endpoint
-func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
+func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Host)
-	application.Cache.storeCache = false
+	app.Cache.storeCache = false
 
 	// upgrade this connection to a WebSocket
 	// connection
@@ -109,6 +108,7 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
+	var userSocketInfo *UserInfo
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
@@ -124,20 +124,19 @@ func (application *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Cannot unmarshal the json message!!!")
 		}
 
-		var userSocketInfo *UserInfo
 		switch userInfo.Method {
 		case USER_INFO:
-			if !application.Cache.storeCache {
-				userSocketInfo = application.Cache.Set(userInfo.UserUUID, userInfo.Message, ws)
-				// application.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
-				application.Cache.storeCache = true
-				go application.BroadcastMsg(application.ParentContext, userSocketInfo, ws)
-				application.Cache.PrintAll()
+			if !app.Cache.storeCache {
+				userSocketInfo = app.Cache.Set(userInfo.UserUUID, userInfo.Message, ws)
+				// app.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
+				app.Cache.storeCache = true
+				go app.BroadcastMsg(app.ParentContext, userSocketInfo, ws)
+				app.Cache.PrintAll()
 			}
 		}
 	}
 
-	if application.Cache.storeCache {
-		application.Cache.Remove()
+	if app.Cache.storeCache && userSocketInfo.UserUUID == app.Cache.Get(userSocketInfo.UserUUID, ws) {
+		app.Cache.Remove()
 	}
 }

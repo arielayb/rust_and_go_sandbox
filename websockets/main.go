@@ -22,13 +22,14 @@ func main() {
 	initPostMsg := app.UserWebInfo{
 		UserUUID: "",
 		Method:   "USER_UUID",
-		Message:  "",
+		Message:  nil,
 	}
 
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
 		Post:          &initPostMsg,
+		ChanMsg:       make(chan string),
 	}
 
 	r := chi.NewRouter()
