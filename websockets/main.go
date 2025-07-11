@@ -19,16 +19,16 @@ func main() {
 	// parent context
 	ctx, stop := context.WithCancel(context.Background())
 
-	initPostMsg := app.UserWebInfo{
-		UserUUID: "",
-		Method:   "USER_UUID",
-		Message:  nil,
-	}
+	// initPostMsg := app.UserWebInfo{
+	// 	UserUUID: "",
+	// 	Method:   "USER_INFO",
+	// 	Message:  "",
+	// }
 
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
-		Post:          &initPostMsg,
+		Post:          []app.UserWebInfo{},
 		ChanMsg:       make(chan string),
 	}
 

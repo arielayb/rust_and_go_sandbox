@@ -19,7 +19,7 @@ reportWebVitals();
 var socket = new WebSocket("ws://localhost:8080/ws");
 
 var dataInit = { 
-  user_uuid: crypto.randomUUID(),
+  user_id: crypto.randomUUID(),
   method: "USER_INFO",
   msg: "",
 };
@@ -51,7 +51,7 @@ let sendMsg = msg => {
   console.log("sending msg: ", msg);
   if (msg !== "") {
     // let data =  {
-    //   user_uuid: crypto.randomUUID(),
+    //   user_id: crypto.randomUUID(),
     //   method: "USER_UUID",
     //   alert_msg: msg
     // };

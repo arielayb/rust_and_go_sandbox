@@ -2,8 +2,9 @@ package app
 
 type Stack []UserInfo
 
-func (s *Stack) Push(value UserInfo) {
+func (s *Stack) Push(value UserInfo) *Stack {
 	*s = append(*s, value)
+	return s
 }
 
 func (s *Stack) Pop() UserInfo {

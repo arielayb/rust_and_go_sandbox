@@ -14,7 +14,7 @@ import (
 type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
-	Post          *UserWebInfo
+	Post          []UserWebInfo
 	ChanMsg       chan string
 }
 
@@ -45,7 +45,7 @@ const (
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		userInfo.Message = nil
+		userInfo.Message = ""
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
@@ -56,23 +56,18 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 			fmt.Println("Closing write goroutine")
 		}
 
-		if len(app.Post.Message) > 0 {
-			userInfo.Message = app.Post.Message
-			userInfo.UserUUID = app.Post.UserUUID
-		}
-
-		if len(userInfo.Message) > 0 {
-			if userInfo.UserUUID == app.Cache.Get(userInfo.UserUUID, ws) {
-				for msg := range app.Post.Message {
+		if len(app.Post) > 0 {
+			for msg := range app.Post {
+				if userInfo.USERID == app.Cache.Get(app.Post[msg].UserID, ws) {
 					// Send the message to all connected clients
-					log.Println("Sending the message: ", app.Post.Message[msg])
-					err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post.Message[msg]))
+					log.Println("Sending the message: ", app.Post[msg].Message)
+					err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post[msg].Message))
 					if err != nil {
 						app.Cache.Remove()
 					}
 					time.Sleep(1 * time.Second)
+					app.Post[msg].Message = ""
 				}
-				app.Post.Message = nil
 			}
 		}
 	}
@@ -87,7 +82,10 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	app.Post = &task
+	// app.Post = &task
+
+	app.Post = append(app.Post, task)
+
 	log.Println("post response: ", task)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -127,7 +125,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		switch userInfo.Method {
 		case USER_INFO:
 			if !app.Cache.storeCache {
-				userSocketInfo = app.Cache.Set(userInfo.UserUUID, userInfo.Message, ws)
+				userSocketInfo = app.Cache.Set(userInfo.UserID, ws)
 				// app.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
 				app.Cache.storeCache = true
 				go app.BroadcastMsg(app.ParentContext, userSocketInfo, ws)
@@ -136,7 +134,8 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if app.Cache.storeCache && userSocketInfo.UserUUID == app.Cache.Get(userSocketInfo.UserUUID, ws) {
+	if app.Cache.storeCache {
+		fmt.Println("User logging off: ", userSocketInfo.USERID)
 		app.Cache.Remove()
 	}
 }
