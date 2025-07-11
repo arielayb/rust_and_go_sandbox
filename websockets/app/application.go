@@ -81,7 +81,7 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	defer r.Body.Close()
 	// app.Post = &task
 
 	app.Post = append(app.Post, task)
