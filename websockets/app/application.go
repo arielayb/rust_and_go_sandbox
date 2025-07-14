@@ -45,7 +45,7 @@ const (
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		userInfo.Message = ""
+		// userInfo.Message = ""
 		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
@@ -55,21 +55,33 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 		case <-ctx.Done():
 			fmt.Println("Closing write goroutine")
 		}
-
-		if len(app.Post) > 0 {
+		postSize := len(app.Post)
+		if postSize > 0 {
 			for msg := range app.Post {
+				// userInfo.USERID = app.Post[msg].UserID
+				// log.Println("the user id?", userInfo.USERID)
+				// log.Println("the user id from post message?", app.Post[msg].UserID)
 				if userInfo.USERID == app.Cache.Get(app.Post[msg].UserID, ws) {
-					// Send the message to all connected clients
-					log.Println("Sending the message: ", app.Post[msg].Message)
-					err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post[msg].Message))
-					if err != nil {
-						app.Cache.Remove()
+					if app.Post[msg].Message != "" {
+						// Send the message to all connected clients
+						log.Println("Sending the message: ", app.Post[msg].Message)
+						err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post[msg].Message))
+						if err != nil {
+							app.Cache.Remove()
+						}
+						time.Sleep(1 * time.Second)
+						app.Post[msg].UserID = ""
+						app.Post[msg].Message = ""
+						app.Post[msg].Method = ""
 					}
-					time.Sleep(1 * time.Second)
-					app.Post[msg].Message = ""
 				}
 			}
+			log.Println("removing message queue: ", app.Post)
+			app.Post = app.Post[:0]
+			//clear the queue of messages
+			// log.Println("the message queue: ", app.Post)
 		}
+		log.Println("the message queue: ", app.Post)
 	}
 }
 
@@ -82,11 +94,13 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	// app.Post = &task
 
+	log.Println("the post message content: ", task)
+
+	// create a queue of user messages
 	app.Post = append(app.Post, task)
 
-	log.Println("post response: ", task)
+	log.Println("post response: ", app.Post)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
@@ -126,11 +140,10 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		case USER_INFO:
 			if !app.Cache.storeCache {
 				userSocketInfo = app.Cache.Set(userInfo.UserID, ws)
-				// app.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
 				app.Cache.storeCache = true
 				go app.BroadcastMsg(app.ParentContext, userSocketInfo, ws)
-				app.Cache.PrintAll()
 			}
+			app.Cache.PrintAll()
 		}
 	}
 

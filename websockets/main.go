@@ -22,7 +22,7 @@ func main() {
 	ctx, stop := context.WithCancel(context.Background())
 
 	go func() {
-		log.Println(http.ListenAndServe("localhost:8081", nil))
+		log.Println(http.ListenAndServe("localhost:8082", nil))
 	}()
 
 	app := &app.App{

@@ -8,9 +8,9 @@ import (
 )
 
 type UserInfo struct {
-	USERID  string `json:"user_id"`
-	Method  string `json:"method"`
-	Message string `json:"msg"`
+	USERID  string   `json:"user_id"`
+	Method  string   `json:"method"`
+	Message []string `json:"msg"`
 	Conn    *websocket.Conn
 }
 
@@ -36,7 +36,7 @@ func (ss *SafeStore) Set(userId string, ws *websocket.Conn) *UserInfo {
 	userInfo := UserInfo{
 		USERID:  userId,
 		Method:  "USER_INFO",
-		Message: "",
+		Message: nil,
 		Conn:    ws,
 	}
 
@@ -59,7 +59,8 @@ func (ss *SafeStore) Get(USERID string, ws *websocket.Conn) string {
 
 func (ss *SafeStore) Remove() {
 	ss.mu.Lock()
-	ss.Clients.Dequeue()
+	result := ss.Clients.Dequeue()
+	result.Conn.Close()
 	copy(ss.Clients.in, ss.Clients.out)
 	ss.mu.Unlock()
 }
