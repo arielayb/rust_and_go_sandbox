@@ -56,12 +56,10 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 			fmt.Println("Closing write goroutine")
 		}
 
+		// shallow copy the Post list
 		tempPost := app.Post
 		if len(tempPost)-1 > 0 {
 			for msg := range tempPost {
-				// userInfo.USERID = app.Post[msg].UserID
-				// log.Println("the user id?", userInfo.USERID)
-				// log.Println("the user id from post message?", app.Post[msg].UserID)
 				if userInfo.USERID == app.Cache.Get(tempPost[msg].UserID, ws) {
 					if tempPost[msg].Message != "" {
 						// Send the message to all connected clients
@@ -71,15 +69,15 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 							app.Cache.Remove()
 						}
 						time.Sleep(1 * time.Second)
+						// clear the index of the user information
 						tempPost[msg].Message = ""
+						tempPost[msg].UserID = ""
+						tempPost[msg].Method = ""
 					}
 				}
 			}
 			log.Println("removing message queue: ", tempPost)
 			tempPost = tempPost[1:]
-
-			//clear the queue of messages
-			// log.Println("the message queue: ", app.Post)
 		}
 		log.Println("the message queue: ", tempPost)
 		app.Post = tempPost

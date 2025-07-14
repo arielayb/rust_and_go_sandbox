@@ -59,8 +59,7 @@ func (ss *SafeStore) Get(USERID string, ws *websocket.Conn) string {
 
 func (ss *SafeStore) Remove() {
 	ss.mu.Lock()
-	result := ss.Clients.Dequeue()
-	result.Conn.Close()
+	ss.Clients.Dequeue()
 	copy(ss.Clients.in, ss.Clients.out)
 	ss.mu.Unlock()
 }
