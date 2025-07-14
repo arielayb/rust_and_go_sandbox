@@ -78,9 +78,9 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 			}
 			log.Println("removing message queue: ", tempPost)
 			tempPost = tempPost[1:]
+			app.Post = tempPost
 		}
 		log.Println("the message queue: ", tempPost)
-		app.Post = tempPost
 	}
 }
 
@@ -146,7 +146,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if app.Cache.storeCache {
+	if app.Cache.storeCache && userSocketInfo.USERID == app.Cache.Get(userSocketInfo.USERID, ws) {
 		app.Cache.Remove()
 	}
 }
