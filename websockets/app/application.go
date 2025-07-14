@@ -55,33 +55,34 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 		case <-ctx.Done():
 			fmt.Println("Closing write goroutine")
 		}
-		postSize := len(app.Post)
-		if postSize > 0 {
-			for msg := range app.Post {
+
+		tempPost := app.Post
+		if len(tempPost)-1 > 0 {
+			for msg := range tempPost {
 				// userInfo.USERID = app.Post[msg].UserID
 				// log.Println("the user id?", userInfo.USERID)
 				// log.Println("the user id from post message?", app.Post[msg].UserID)
-				if userInfo.USERID == app.Cache.Get(app.Post[msg].UserID, ws) {
-					if app.Post[msg].Message != "" {
+				if userInfo.USERID == app.Cache.Get(tempPost[msg].UserID, ws) {
+					if tempPost[msg].Message != "" {
 						// Send the message to all connected clients
-						log.Println("Sending the message: ", app.Post[msg].Message)
-						err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post[msg].Message))
+						log.Println("Sending the message: ", tempPost[msg].Message)
+						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[msg].Message))
 						if err != nil {
 							app.Cache.Remove()
 						}
 						time.Sleep(1 * time.Second)
-						app.Post[msg].UserID = ""
-						app.Post[msg].Message = ""
-						app.Post[msg].Method = ""
+						tempPost[msg].Message = ""
 					}
 				}
 			}
-			log.Println("removing message queue: ", app.Post)
-			app.Post = app.Post[:0]
+			log.Println("removing message queue: ", tempPost)
+			tempPost = tempPost[1:]
+
 			//clear the queue of messages
 			// log.Println("the message queue: ", app.Post)
 		}
-		log.Println("the message queue: ", app.Post)
+		log.Println("the message queue: ", tempPost)
+		app.Post = tempPost
 	}
 }
 
@@ -148,7 +149,6 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if app.Cache.storeCache {
-		fmt.Println("User logging off: ", userSocketInfo.USERID)
 		app.Cache.Remove()
 	}
 }
