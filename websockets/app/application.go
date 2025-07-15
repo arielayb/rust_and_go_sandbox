@@ -39,7 +39,7 @@ const (
 	pongWait = 4 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 4) / 10
+	pingPeriod = (pongWait * 9) / 10
 )
 
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
@@ -58,7 +58,7 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 
 		// shallow copy the Post list
 		tempPost := app.Post
-		if len(tempPost)-1 > 0 {
+		if len(tempPost) > 0 {
 			for msg := range tempPost {
 				if userInfo.USERID == app.Cache.Get(tempPost[msg].UserID, ws) {
 					if tempPost[msg].Message != "" {
@@ -67,19 +67,20 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[msg].Message))
 						if err != nil {
 							app.Cache.Remove()
+						} else {
+							time.Sleep(1 * time.Second)
+							// clear the index of the user information
+							tempPost[msg].Message = ""
+							tempPost[msg].UserID = ""
+							tempPost[msg].Method = ""
 						}
-						time.Sleep(1 * time.Second)
-						// clear the index of the user information
-						tempPost[msg].Message = ""
-						tempPost[msg].UserID = ""
-						tempPost[msg].Method = ""
 					}
 				}
 			}
 			log.Println("removing message queue: ", tempPost)
 			tempPost = tempPost[1:]
-			app.Post = tempPost
 		}
+		app.Post = tempPost
 		log.Println("the message queue: ", tempPost)
 	}
 }
