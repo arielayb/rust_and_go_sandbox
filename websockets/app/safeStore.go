@@ -7,15 +7,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const (
-	USER_UUID string = "USER_UUID"
-)
-
 type UserInfo struct {
-	UserUUID string   `json:"user_uuid"`
-	Method   string   `json:"method"`
-	Message  []string `json:"msg"`
-	Conn     *websocket.Conn
+	USERID  string   `json:"user_id"`
+	Method  string   `json:"method"`
+	Message []string `json:"msg"`
+	Conn    *websocket.Conn
 }
 
 type SafeStore struct {
@@ -36,12 +32,12 @@ func NewStore() *SafeStore {
 
 }
 
-func (ss *SafeStore) Set(userId string, userMsg []string, ws *websocket.Conn) *UserInfo {
+func (ss *SafeStore) Set(userId string, ws *websocket.Conn) *UserInfo {
 	userInfo := UserInfo{
-		UserUUID: userId,
-		Method:   "USER_INFO",
-		Message:  userMsg,
-		Conn:     ws,
+		USERID:  userId,
+		Method:  "USER_INFO",
+		Message: nil,
+		Conn:    ws,
 	}
 
 	ss.mu.Lock()
@@ -51,12 +47,11 @@ func (ss *SafeStore) Set(userId string, userMsg []string, ws *websocket.Conn) *U
 	return &userInfo
 }
 
-func (ss *SafeStore) Get(userUUID string, ws *websocket.Conn) string {
+func (ss *SafeStore) Get(USERID string, ws *websocket.Conn) string {
 	for _, val := range ss.GetAll().in {
-		if val.UserUUID == userUUID && val.Conn == ws {
-			return val.UserUUID
+		if val.USERID == USERID && val.Conn == ws {
+			return val.USERID
 		}
-
 	}
 
 	return "user not found!"

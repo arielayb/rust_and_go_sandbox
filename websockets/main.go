@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"websockets/app"
 
 	"github.com/go-chi/chi/v5"
@@ -19,16 +21,14 @@ func main() {
 	// parent context
 	ctx, stop := context.WithCancel(context.Background())
 
-	initPostMsg := app.UserWebInfo{
-		UserUUID: "",
-		Method:   "USER_UUID",
-		Message:  nil,
-	}
+	go func() {
+		log.Println(http.ListenAndServe("localhost:8082", nil))
+	}()
 
 	app := &app.App{
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
-		Post:          &initPostMsg,
+		Post:          []app.UserWebInfo{},
 		ChanMsg:       make(chan string),
 	}
 

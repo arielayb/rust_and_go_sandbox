@@ -14,7 +14,7 @@ import (
 type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
-	Post          *UserWebInfo
+	Post          []UserWebInfo
 	ChanMsg       chan string
 }
 
@@ -39,14 +39,12 @@ const (
 	pongWait = 4 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 4) / 10
+	pingPeriod = (pongWait * 9) / 10
 )
 
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		userInfo.Message = nil
-		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
 			if err := ws.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
@@ -56,25 +54,37 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 			fmt.Println("Closing write goroutine")
 		}
 
-		if len(app.Post.Message) > 0 {
-			userInfo.Message = app.Post.Message
-			userInfo.UserUUID = app.Post.UserUUID
-		}
-
-		if len(userInfo.Message) > 0 {
-			if userInfo.UserUUID == app.Cache.Get(userInfo.UserUUID, ws) {
-				for msg := range app.Post.Message {
-					// Send the message to all connected clients
-					log.Println("Sending the message: ", app.Post.Message[msg])
-					err := ws.WriteMessage(websocket.TextMessage, []byte(app.Post.Message[msg]))
-					if err != nil {
-						app.Cache.Remove()
+		// shallow copy the Post list
+		tempPost := app.Post
+		if len(tempPost) > 0 {
+			for index := range tempPost {
+				if userInfo.USERID == tempPost[index].UserID && tempPost[index].Message != "" {
+					if tempPost[index].Message != "" {
+						// Send the message to all connected clients
+						log.Println("Sending the message: ", tempPost[index].Message)
+						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[index].Message))
+						if err != nil {
+							app.Cache.Remove()
+						} else {
+							time.Sleep(1 * time.Second)
+							// clear the index of the user information
+							tempPost[index].Message = ""
+							tempPost[index].UserID = ""
+						}
 					}
-					time.Sleep(1 * time.Second)
 				}
-				app.Post.Message = nil
+			}
+
+			//clear the buffer list
+			for _, msg := range tempPost {
+				if msg.Message == "" && msg.UserID == "" {
+					log.Println("removing message queue: ", tempPost)
+					tempPost = tempPost[1:]
+				}
 			}
 		}
+		app.Post = tempPost
+		log.Println("the message queue: ", tempPost)
 	}
 }
 
@@ -86,9 +96,14 @@ func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 
-	app.Post = &task
-	log.Println("post response: ", task)
+	log.Println("the post message content: ", task)
+
+	// create a queue of user messages
+	app.Post = append(app.Post, task)
+
+	log.Println("post response: ", app.Post)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
@@ -127,16 +142,15 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		switch userInfo.Method {
 		case USER_INFO:
 			if !app.Cache.storeCache {
-				userSocketInfo = app.Cache.Set(userInfo.UserUUID, userInfo.Message, ws)
-				// app.Cache.Set(userInfo.UserUUID, userInfo.AlertMsg, ws)
+				userSocketInfo = app.Cache.Set(userInfo.UserID, ws)
 				app.Cache.storeCache = true
 				go app.BroadcastMsg(app.ParentContext, userSocketInfo, ws)
-				app.Cache.PrintAll()
 			}
+			app.Cache.PrintAll()
 		}
 	}
 
-	if app.Cache.storeCache && userSocketInfo.UserUUID == app.Cache.Get(userSocketInfo.UserUUID, ws) {
+	if app.Cache.storeCache && userSocketInfo.USERID == app.Cache.Get(userSocketInfo.USERID, ws) {
 		app.Cache.Remove()
 	}
 }
