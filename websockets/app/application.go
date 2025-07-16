@@ -45,8 +45,6 @@ const (
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	for {
-		// userInfo.Message = ""
-		// Grab the next message from the broadcast channel
 		select {
 		case <-ticker.C:
 			if err := ws.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
@@ -59,26 +57,31 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 		// shallow copy the Post list
 		tempPost := app.Post
 		if len(tempPost) > 0 {
-			for msg := range tempPost {
-				if userInfo.USERID == app.Cache.Get(tempPost[msg].UserID, ws) {
-					if tempPost[msg].Message != "" {
+			for index := range tempPost {
+				if userInfo.USERID == tempPost[index].UserID && tempPost[index].Message != "" {
+					if tempPost[index].Message != "" {
 						// Send the message to all connected clients
-						log.Println("Sending the message: ", tempPost[msg].Message)
-						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[msg].Message))
+						log.Println("Sending the message: ", tempPost[index].Message)
+						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[index].Message))
 						if err != nil {
 							app.Cache.Remove()
 						} else {
 							time.Sleep(1 * time.Second)
 							// clear the index of the user information
-							tempPost[msg].Message = ""
-							tempPost[msg].UserID = ""
-							tempPost[msg].Method = ""
+							tempPost[index].Message = ""
+							tempPost[index].UserID = ""
 						}
 					}
 				}
 			}
-			log.Println("removing message queue: ", tempPost)
-			tempPost = tempPost[1:]
+
+			//clear the buffer list
+			for _, msg := range tempPost {
+				if msg.Message == "" && msg.UserID == "" {
+					log.Println("removing message queue: ", tempPost)
+					tempPost = tempPost[1:]
+				}
+			}
 		}
 		app.Post = tempPost
 		log.Println("the message queue: ", tempPost)
