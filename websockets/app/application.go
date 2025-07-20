@@ -64,7 +64,7 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 						log.Println("Sending the message: ", tempPost[index].Message)
 						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[index].Message))
 						if err != nil {
-							app.Cache.Remove()
+							break
 						} else {
 							time.Sleep(1 * time.Second)
 							// clear the index of the user information
@@ -150,7 +150,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if app.Cache.storeCache && userSocketInfo.USERID == app.Cache.Get(userSocketInfo.USERID, ws) {
+	if app.Cache.storeCache {
 		app.Cache.Remove()
 	}
 }
