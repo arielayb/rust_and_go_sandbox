@@ -58,7 +58,7 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 		tempPost := app.Post
 		if len(tempPost) > 0 {
 			for index := range tempPost {
-				if userInfo.USERID == tempPost[index].UserID && tempPost[index].Message != "" {
+				if userInfo.USERID == app.Cache.Get(tempPost[index].UserID, ws) {
 					if tempPost[index].Message != "" {
 						// Send the message to all connected clients
 						log.Println("Sending the message: ", tempPost[index].Message)
