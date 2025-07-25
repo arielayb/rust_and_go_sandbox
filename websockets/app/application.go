@@ -44,6 +44,7 @@ const (
 
 func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -58,7 +59,7 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 		tempPost := app.Post
 		if len(tempPost) > 0 {
 			for index := range tempPost {
-				if userInfo.USERID == tempPost[index].UserID && tempPost[index].Message != "" {
+				if userInfo.USERID == app.Cache.Get(tempPost[index].UserID, ws) {
 					if tempPost[index].Message != "" {
 						// Send the message to all connected clients
 						log.Println("Sending the message: ", tempPost[index].Message)
@@ -123,7 +124,6 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 
 	// listen indefinitely for new messages coming
 	// through on our WebSocket connection
-	var userSocketInfo *UserInfo
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
@@ -139,6 +139,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Cannot unmarshal the json message!!!")
 		}
 
+		var userSocketInfo *UserInfo
 		switch userInfo.Method {
 		case USER_INFO:
 			if !app.Cache.storeCache {
