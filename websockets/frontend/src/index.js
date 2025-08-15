@@ -22,6 +22,7 @@ var dataInit = {
   user_id: crypto.randomUUID(),
   method: "USER_INFO",
   msg: "",
+  global: true,
 };
 
 let connect = cb => {
@@ -29,6 +30,7 @@ let connect = cb => {
 
   socket.onopen = () => {
     console.log("Successfully Connected");
+    socket.send(JSON.stringify(dataInit));
   };
 
   socket.onmessage = msg => {
@@ -55,7 +57,7 @@ let sendMsg = msg => {
     //   method: "USER_UUID",
     //   alert_msg: msg
     // };
-    socket.send(JSON.stringify(dataInit));
+    socket.send(JSON.stringify(msg));
   }   
 };
 
