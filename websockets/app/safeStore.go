@@ -16,7 +16,7 @@ type UserInfo struct {
 }
 
 type SafeStore struct {
-	Clients      Queue
+	Clients      *Queue
 	mu           *sync.Mutex
 	UserInfo     *UserInfo
 	BroadcastMsg chan string
@@ -25,7 +25,7 @@ type SafeStore struct {
 
 func NewStore() *SafeStore {
 	return &SafeStore{
-		Clients:      Queue{},
+		Clients:      &Queue{},
 		mu:           &sync.Mutex{},
 		UserInfo:     &UserInfo{},
 		BroadcastMsg: make(chan string),
@@ -65,7 +65,7 @@ func (ss *SafeStore) Remove() {
 	ss.mu.Unlock()
 }
 
-func (ss *SafeStore) GetAll() Queue {
+func (ss *SafeStore) GetAll() *Queue {
 	ss.mu.Lock()
 	tempMap := ss.Clients
 	ss.mu.Unlock()

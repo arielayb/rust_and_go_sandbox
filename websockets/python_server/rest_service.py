@@ -29,6 +29,7 @@ if __name__ == "__main__":
     url = 'http://127.0.0.1:8080/alert'
     # response = requests.post(url, data=data, auth=HTTPBasicAuth("", "mySecretKey-10101"))# Handling the response object
     for i in range(4):
+        print("the arg for global: ", args.gmsg)
         data = {"user_id": f'{args.post}', "method": "USER_INFO", "msg": f'hello {i}', "global": args.gmsg}
         response = requests.post(url, json=data, verify=False)# Handling the response object
         if response.status_code == 200:
@@ -36,4 +37,5 @@ if __name__ == "__main__":
             print("Response Content:", f'{response.json}')
         else:
             print('Request failed with status code:', response.status_code)
+            print('Request failed with status code:', response.json)
 

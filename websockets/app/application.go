@@ -60,40 +60,37 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
 		if len(app.Post) > 0 {
 			for index := range app.Post {
 				if userInfo.USERID == app.Cache.Get(app.Post[index].UserID, userInfo.WebSocket) {
-					if app.Post[index].Message != "" {
+					if app.Post[index].Message != "" && !app.Post[index].Global {
 						// Send the message to all connected clients
 						log.Println("Sending the message: ", app.Post[index].Message)
 						err := userInfo.WebSocket.WriteMessage(websocket.TextMessage, []byte(app.Post[index].Message))
 						if err != nil {
 							break
 						} else {
+							time.Sleep(1 * time.Second)
 							// clear the index of the user information
 							app.Post[index].Message = ""
 						}
-					}
-				}
-
-				if app.Post[index].Global {
-					for _, client := range app.Cache.GetAll().In {
-						// Send the message to all connected clients
-						client.Global = true
-						log.Println("Sending the message: ", app.Post[index].Message)
-						err := client.WebSocket.WriteMessage(websocket.TextMessage, []byte(app.Post[index].Message))
-						if err != nil {
-							break
-						} else {
-							// clear the index of the user information
-							app.Post[index].Message = ""
+					} else if app.Post[index].Global {
+						for _, client := range app.Cache.GetAll().In {
+							// Send the message to all connected clients
+							log.Println("Sending the message: ", app.Post[index].Message)
+							err := client.WebSocket.WriteMessage(websocket.TextMessage, []byte(app.Post[index].Message))
+							if err != nil {
+								break
+							}
 						}
+						time.Sleep(1 * time.Second)
+						app.Post[index].Message = ""
 					}
 				}
-			}
 
-			//clear the buffer list
-			for _, msg := range app.Post {
-				if msg.Message == "" && msg.UserID == "" {
-					log.Println("removing message queue: ", app.Post)
-					app.Post = app.Post[1:]
+				//clear the buffer list
+				for _, msg := range app.Post {
+					if msg.Message == "" {
+						log.Println("removing message queue: ", app.Post)
+						app.Post = app.Post[1:]
+					}
 				}
 			}
 		}
