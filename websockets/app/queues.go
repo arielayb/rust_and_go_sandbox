@@ -15,20 +15,20 @@ func (s *Stack) Pop() UserInfo {
 }
 
 type Queue struct {
-	in  Stack
-	out Stack
+	In  Stack
+	Out Stack
 }
 
 func (q *Queue) Enqueue(value UserInfo) {
-	q.in.Push(value)
+	q.In.Push(value)
 }
 
 func (q *Queue) Dequeue() UserInfo {
-	if len(q.out) == 0 {
-		for len(q.in) > 0 {
-			q.out.Push(q.in.Pop())
+	if len(q.Out) == 0 {
+		for len(q.In) > 0 {
+			q.Out.Push(q.In.Pop())
 		}
 	}
 
-	return q.out.Pop()
+	return q.Out.Pop()
 }

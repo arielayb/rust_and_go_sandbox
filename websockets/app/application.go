@@ -42,13 +42,13 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
-func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websocket.Conn) {
+func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
 	ticker := time.NewTicker(pingPeriod)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			if err := ws.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
+			if err := userInfo.WebSocket.WriteMessage(websocket.TextMessage, []byte("")); err != nil {
 				return
 			}
 		case <-ctx.Done():
@@ -56,36 +56,46 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo, ws *websoc
 		}
 
 		// shallow copy the Post list
-		tempPost := app.Post
-		if len(tempPost) > 0 {
-			for index := range tempPost {
-				if userInfo.USERID == app.Cache.Get(tempPost[index].UserID, ws) {
-					if tempPost[index].Message != "" {
+		//tempPost := app.Post
+		if len(app.Post) > 0 {
+			for index := range app.Post {
+				if userInfo.USERID == app.Cache.Get(app.Post[index].UserID, userInfo.WebSocket) {
+					if app.Post[index].Message != "" && !app.Post[index].Global {
 						// Send the message to all connected clients
-						log.Println("Sending the message: ", tempPost[index].Message)
-						err := ws.WriteMessage(websocket.TextMessage, []byte(tempPost[index].Message))
+						log.Println("Sending the message: ", app.Post[index].Message)
+						err := userInfo.WebSocket.WriteMessage(websocket.TextMessage, []byte(app.Post[index].Message))
 						if err != nil {
 							break
 						} else {
 							time.Sleep(1 * time.Second)
 							// clear the index of the user information
-							tempPost[index].Message = ""
-							tempPost[index].UserID = ""
+							app.Post[index].Message = ""
 						}
+					} else if app.Post[index].Global {
+						for _, client := range app.Cache.GetAll().In {
+							// Send the message to all connected clients
+							log.Println("Sending the message: ", app.Post[index].Message)
+							err := client.WebSocket.WriteMessage(websocket.TextMessage, []byte(app.Post[index].Message))
+							if err != nil {
+								break
+							}
+						}
+						time.Sleep(1 * time.Second)
+						app.Post[index].Message = ""
+					}
+				}
+
+				//clear the buffer list
+				for _, msg := range app.Post {
+					if msg.Message == "" {
+						log.Println("removing message queue: ", app.Post)
+						app.Post = app.Post[1:]
 					}
 				}
 			}
-
-			//clear the buffer list
-			for _, msg := range tempPost {
-				if msg.Message == "" && msg.UserID == "" {
-					log.Println("removing message queue: ", tempPost)
-					tempPost = tempPost[1:]
-				}
-			}
 		}
-		app.Post = tempPost
-		log.Println("the message queue: ", tempPost)
+		//app.Post = tempPost
+		log.Println("the message queue: ", app.Post)
 	}
 }
 
@@ -145,7 +155,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 			if !app.Cache.storeCache {
 				userSocketInfo = app.Cache.Set(userInfo.UserID, ws)
 				app.Cache.storeCache = true
-				go app.BroadcastMsg(app.ParentContext, userSocketInfo, ws)
+				go app.BroadcastMsg(app.ParentContext, userSocketInfo)
 			}
 			app.Cache.PrintAll()
 		}
