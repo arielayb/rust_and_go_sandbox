@@ -16,21 +16,18 @@ type UserInfo struct {
 }
 
 type SafeStore struct {
-	Clients      *Queue
+	Clients      []UserInfo
 	mu           *sync.Mutex
-	UserInfo     *UserInfo
 	BroadcastMsg chan string
 	storeCache   bool
 }
 
 func NewStore() *SafeStore {
 	return &SafeStore{
-		Clients:      &Queue{},
+		Clients:      []UserInfo{},
 		mu:           &sync.Mutex{},
-		UserInfo:     &UserInfo{},
 		BroadcastMsg: make(chan string),
 	}
-
 }
 
 func (ss *SafeStore) Set(userId string, ws *websocket.Conn) *UserInfo {
@@ -43,42 +40,50 @@ func (ss *SafeStore) Set(userId string, ws *websocket.Conn) *UserInfo {
 	}
 
 	ss.mu.Lock()
-	ss.Clients.Enqueue(userInfo)
+	ss.Clients = append(ss.Clients, userInfo)
 	ss.mu.Unlock()
 
 	return &userInfo
 }
 
-func (ss *SafeStore) Get(USERID string, ws *websocket.Conn) string {
-	for _, val := range ss.GetAll().In {
-		if val.USERID == USERID && val.WebSocket == ws {
-			return val.USERID
+func (ss *SafeStore) Get(ws *websocket.Conn) (int, UserInfo) {
+	for index, client := range ss.GetAll() {
+		if client.WebSocket == ws {
+			return index, client
 		}
 	}
 
-	return "user not found!"
+	return -1, UserInfo{}
 }
 
-func (ss *SafeStore) Remove() {
+func (ss *SafeStore) Remove(ws *websocket.Conn) {
 	ss.mu.Lock()
-	ss.Clients.Dequeue()
+	for index, client := range ss.Clients {
+		if client.WebSocket == ws {
+			ss.Clients = append(ss.Clients[:index], ss.Clients[index+1:]...)
+		}
+	}
 	ss.mu.Unlock()
 }
 
-func (ss *SafeStore) GetAll() *Queue {
+func (ss *SafeStore) GetAll() []UserInfo {
+	currentClients := []UserInfo{}
+
 	ss.mu.Lock()
-	tempMap := ss.Clients
+	for _, client := range ss.Clients {
+		currentClients = append(currentClients, client)
+	}
 	ss.mu.Unlock()
 
-	return tempMap
+	return currentClients
 }
 
 func (ss *SafeStore) PrintAll() {
 	ss.mu.Lock()
-	for value := range ss.Clients.In {
+	for value := range ss.Clients {
 		fmt.Println("the key: ", value)
 	}
 	ss.mu.Unlock()
 
-	fmt.Println("the number of sessions: ", len(ss.Clients.In))
+	fmt.Println("the number of sessions: ", len(ss.Clients))
 }
