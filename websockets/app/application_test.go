@@ -44,7 +44,7 @@ func TestSafeCacheStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	//defer ws.Close()
+	defer ws.Close()
 
 	testData := UserWebInfo{
 		UserID:  "guest1",
