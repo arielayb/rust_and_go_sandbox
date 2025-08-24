@@ -15,7 +15,6 @@ type App struct {
 	Cache         SafeStore
 	ParentContext context.Context
 	Post          []UserWebInfo
-	ChanMsg       chan string
 }
 
 // We'll need to define an Upgrader
@@ -60,7 +59,7 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
 		if len(tempPost) > 0 {
 			for index := range tempPost {
 				_, user := app.Cache.Get(userInfo.WebSocket)
-				if userInfo.USERID == user.USERID && !tempPost[index].Global {
+				if tempPost[index].UserID == user.UserID && !tempPost[index].Global {
 					if tempPost[index].Message != "" {
 						// Send the message to all connected clients
 						log.Println("Sending the message: ", tempPost[index].Message)
@@ -79,14 +78,14 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
 					for _, client := range app.Cache.Clients {
 						// Send the message to all connected clients
 						log.Println("Sending the message to all users: ", tempPost[index].Message)
-						log.Println("numer of users: ", client.USERID)
+						log.Println("number of users: ", client.UserID)
 						err := client.WebSocket.WriteMessage(websocket.TextMessage, []byte(tempPost[index].Message))
 						if err != nil {
 							break
 						}
 					}
 					time.Sleep(1 * time.Second)
-					tempPost[index].Message = ""
+					//tempPost[index].Message = ""
 				}
 			}
 			//clear the buffer list
@@ -105,7 +104,7 @@ func (app *App) BroadcastMsg(ctx context.Context, userInfo *UserInfo) {
 }
 
 func (app *App) PostAlert(w http.ResponseWriter, r *http.Request) {
-	r.Header.Add("Content-Type", "app/json")
+	r.Header.Add("Content-Type", "application/json")
 	var task UserWebInfo
 	err := json.NewDecoder(r.Body).Decode(&task)
 	if err != nil {
@@ -158,6 +157,7 @@ func (app *App) ServeWs(w http.ResponseWriter, r *http.Request) {
 		switch userInfo.Method {
 		case USER_INFO:
 			if !app.Cache.storeCache {
+				fmt.Println("Adding new user!")
 				userSocketInfo = app.Cache.Set(userInfo.UserID, ws)
 				app.Cache.storeCache = true
 				go app.BroadcastMsg(app.ParentContext, userSocketInfo)

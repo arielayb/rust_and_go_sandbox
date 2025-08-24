@@ -1,103 +1,69 @@
-package app_test
+package app
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
-	"websockets/app"
+	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/assert"
 )
 
-var upgrade = websocket.Upgrader{}
+var testApp *App
 
-type UserInfo struct {
-	UserUUID string
-	Conn     *websocket.Conn
-}
-
-func echo(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrade.Upgrade(w, r, nil)
-	if err != nil {
-		return
+func TestMain(m *testing.M) {
+	ctx, stop := context.WithCancel(context.Background())
+	testApp = &App{
+		Cache:         *NewStore(),
+		ParentContext: ctx,
+		Post:          []UserWebInfo{},
 	}
-	defer c.Close()
-	for {
-		mt, message, err := c.ReadMessage()
-		if err != nil {
-			break
-		}
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			break
-		}
-	}
-}
-
-func TestExample(t *testing.T) {
-	// Create test server with the echo handler.
-	s := httptest.NewServer(http.HandlerFunc(echo))
-	defer s.Close()
-
-	// Convert http://127.0.0.1 to ws://127.0.0.
-	u := "ws" + strings.TrimPrefix(s.URL, "http")
-
-	// Connect to the server
-	ws, _, err := websocket.DefaultDialer.Dial(u, nil)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	defer ws.Close()
-
-	// Send message to server, read response and check to see if it's what we expect.
-	for i := 0; i < 10; i++ {
-		if err := ws.WriteMessage(websocket.TextMessage, []byte("hello")); err != nil {
-			t.Fatalf("%v", err)
-		}
-		_, p, err := ws.ReadMessage()
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
-		if string(p) != "hello" {
-			t.Fatalf("bad message")
-		}
-	}
+	exitVal := m.Run()
+	os.Exit(exitVal)
+	stop()
 }
 
 func TestSafeCacheStore(t *testing.T) {
-	// store := app.SafeStore
-	app := &app.App{
-		Cache: *app.NewStore(),
-	}
-
 	// Create test server with the echo handler.
-	s := httptest.NewServer(http.HandlerFunc(echo))
-	defer s.Close()
+	server := httptest.NewServer(http.HandlerFunc(testApp.ServeWs))
+	serverPost := httptest.NewServer(http.HandlerFunc(testApp.PostAlert))
+	defer server.Close()
+	defer serverPost.Close()
 
-	// Convert http://127.0.0.1 to ws://127.0.0.
-	u := "ws" + strings.TrimPrefix(s.URL, "http")
+	// Convert http://127.0.0.1 to ws://127.0.0.1
+	upgradeToWs := "ws" + strings.TrimPrefix(server.URL, "http")
 
 	// Connect to the server
-	ws, _, err := websocket.DefaultDialer.Dial(u, nil)
+	ws, _, err := websocket.DefaultDialer.Dial(upgradeToWs, nil)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	defer ws.Close()
+	//defer ws.Close()
 
-	// userInfo := UserInfo{
-	// 	UserUUID: "someUUID",
-	// 	Conn:     ws,
-	// }
+	testData := UserWebInfo{
+		UserID:  "guest1",
+		Method:  "USER_INFO",
+		Message: "hello1",
+		Global:  false,
+	}
 
-	// userInfo2 := UserInfo{
-	// 	UserUUID: "someUUID2",
-	// 	Conn:     ws,
-	// }
+	jsonMsg, errJson := json.Marshal(&testData)
+	if errJson != nil {
+		t.Fatalf("Error: %v", errJson.Error())
+	}
 
-	app.Cache.Clients.Enqueue(*app.Cache.UserInfo)
-	app.Cache.Clients.Enqueue(*app.Cache.UserInfo)
+	if err := (ws.WriteMessage(websocket.TextMessage, jsonMsg)); err != nil {
+		t.Fatalf("%v", err)
+	}
+	time.Sleep(1 * time.Second)
+	clients := testApp.Cache.Clients
+	fmt.Println("the Queue: ", clients)
 
-	fmt.Println("the Queue: ", app.Cache.Clients)
+	assert.Equal(t, len(clients), 1)
 }

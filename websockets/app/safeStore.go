@@ -8,7 +8,7 @@ import (
 )
 
 type UserInfo struct {
-	USERID    string `json:"user_id"`
+	UserID    string `json:"user_id"`
 	Method    string `json:"method"`
 	Message   string `json:"msg"`
 	Global    bool   `json:"global"`
@@ -16,23 +16,21 @@ type UserInfo struct {
 }
 
 type SafeStore struct {
-	Clients      []UserInfo
-	mu           *sync.Mutex
-	BroadcastMsg chan string
-	storeCache   bool
+	Clients    []UserInfo
+	mu         *sync.Mutex
+	storeCache bool
 }
 
 func NewStore() *SafeStore {
 	return &SafeStore{
-		Clients:      []UserInfo{},
-		mu:           &sync.Mutex{},
-		BroadcastMsg: make(chan string),
+		Clients: []UserInfo{},
+		mu:      &sync.Mutex{},
 	}
 }
 
 func (ss *SafeStore) Set(userId string, ws *websocket.Conn) *UserInfo {
 	userInfo := UserInfo{
-		USERID:    userId,
+		UserID:    userId,
 		Method:    "USER_INFO",
 		Message:   "",
 		Global:    false,

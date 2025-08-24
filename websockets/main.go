@@ -29,7 +29,6 @@ func main() {
 		Cache:         *app.NewStore(),
 		ParentContext: ctx,
 		Post:          []app.UserWebInfo{},
-		ChanMsg:       make(chan string),
 	}
 
 	r := chi.NewRouter()
